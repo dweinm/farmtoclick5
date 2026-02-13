@@ -1,0 +1,66 @@
+{
+  "best_model": "SVM",
+  "cv_f1_score": 0.9632,
+  "report": {
+    "non_permit": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 210.0
+    },
+    "authentic": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 42.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 252.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 252.0
+    }
+  },
+  "feature_importances": {},
+  "trained_at": "2026-02-06T14:18:38.839544",
+  "authentic_images_used": 2,
+  "total_authentic_samples": 42,
+  "total_non_permit_samples": 210,
+  "feature_names": [
+    "blur_score",
+    "brightness",
+    "contrast",
+    "image_area",
+    "width",
+    "height",
+    "aspect_ratio",
+    "num_contours",
+    "max_contour_area",
+    "avg_contour_area",
+    "edge_density",
+    "text_pixel_ratio",
+    "horizontal_line_ratio",
+    "text_region_count",
+    "color_variance",
+    "hue_entropy",
+    "saturation_entropy",
+    "value_entropy",
+    "edge_density_sobel",
+    "corner_count",
+    "edge_magnitude_mean",
+    "has_qr_code",
+    "qr_area_ratio",
+    "lbp_mean",
+    "lbp_std",
+    "glcm_contrast",
+    "glcm_homogeneity"
+  ],
+  "model_path": "C:\\Projects-BSIT\\farmtoclick-main\\project\\backend\\ml_models\\permit_classifier.pkl"
+}

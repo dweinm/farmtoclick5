@@ -1,0 +1,57 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Products from './pages/Products';
+import ProductDetail from './pages/ProductDetail';
+import Farmers from './pages/Farmers';
+import Profile from './pages/Profile';
+import Cart from './pages/Cart';
+import Orders from './pages/Orders';
+import FarmerDashboard from './pages/FarmerDashboard';
+import ManageProducts from './pages/ManageProducts';
+import StartSelling from './pages/StartSelling';
+import FarmerProfile from './pages/FarmerProfile';
+import FarmerVerify from './pages/FarmerVerify';
+import CoVendorsMarketplace from './pages/CoVendorsMarketplace';
+import AdminDashboard from './pages/AdminDashboard';
+import PermitVerificationDashboard from './pages/PermitVerificationDashboard';
+import DTIPriceManagement from './pages/DTIPriceManagement';
+import AdminRiders from './pages/AdminRiders';
+import './App.css';
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/farmers" element={<Farmers />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
+            <Route path="/manage-products" element={<ManageProducts />} />
+            <Route path="/co-vendors" element={<CoVendorsMarketplace />} />
+            <Route path="/start-selling" element={<StartSelling />} />
+            <Route path="/farmer/:id" element={<FarmerProfile />} />
+            <Route path="/farmer-verify" element={<FarmerVerify />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/admin-riders" element={<AdminRiders />} />
+            <Route path="/permit-verification-dashboard" element={<PermitVerificationDashboard />} />
+            <Route path="/dti-prices" element={<DTIPriceManagement />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
