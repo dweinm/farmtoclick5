@@ -184,6 +184,9 @@ const Navbar = ({ activePage }) => {
             {user && user.is_farmer && (
               <li><Link to="/farmer-dashboard" className={activePage === 'myshop' ? 'active' : ''} onClick={handleNavClick}>My Shop</Link></li>
             )}
+            {user && user.role === 'rider' && (
+              <li><Link to="/rider-orders" className={activePage === 'rider-orders' ? 'active' : ''} onClick={handleNavClick}>Assigned Orders</Link></li>
+            )}
           </ul>
           <div className="nav-right">
             {user && user.is_farmer && (

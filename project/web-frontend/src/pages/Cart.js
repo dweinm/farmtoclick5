@@ -73,6 +73,10 @@ const Cart = () => {
       });
       const checkoutUrl = response?.data?.checkout_url;
       if (checkoutUrl) {
+        const orderId = response?.data?.order?._id || response?.data?.order?.id;
+        if (orderId) {
+          localStorage.setItem('paymongoPendingOrder', orderId);
+        }
         window.location.href = checkoutUrl;
         return;
       }

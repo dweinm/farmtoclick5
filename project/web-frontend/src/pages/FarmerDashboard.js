@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { productsAPI, ordersAPI, ridersAPI } from '../services/api';
 import Navbar from '../components/Navbar';
 
-const LALAMOVE_BOOKING_URL = 'https://web.lalamove.com/?shortlink=of9j9igz&c=ROW_ROW_USR-ALL_OWN_ACQ_WEB_ALL_Button&pid=WEB&af_xp=custom&source_caller=ui';
 
 const FarmerDashboard = () => {
   const { user } = useAuth();
@@ -266,12 +265,6 @@ const FarmerDashboard = () => {
     setRejectionReason('');
   };
 
-  const openLalamoveBooking = () => {
-    if (typeof window !== 'undefined') {
-      window.open(LALAMOVE_BOOKING_URL, '_blank', 'noopener,noreferrer');
-    }
-  };
-
   // Calculate statistics
   const availableCount = products.filter(p => p.available !== false && p.quantity > 0).length;
   const unavailableCount = products.length - availableCount;
@@ -406,6 +399,7 @@ const FarmerDashboard = () => {
                       const shippingName = order.shipping_name || order.buyer_name;
                       const shippingPhone = order.shipping_phone || order.buyer_phone;
                       const isDraggable = statusValue === 'ready_for_ship' && !order.assigned_rider_id;
+                      const paymentPending = order.payment_provider === 'paymongo' && order.payment_status !== 'paid';
 
                       return (
                       <article
@@ -429,6 +423,9 @@ const FarmerDashboard = () => {
                             <span className={`order-status status-${statusValue.replace(' ', '-')}`}>
                               {statusLabel}
                             </span>
+                            {paymentPending && (
+                              <span className="farmer-order-payment">Awaiting Payment</span>
+                            )}
                             {isDraggable && !order.assigned_rider_id && (
                               <span className="farmer-order-drag">Drag to assign rider</span>
                             )}

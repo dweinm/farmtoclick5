@@ -21,7 +21,7 @@ const STATUS_COLORS = {
 };
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -39,19 +39,21 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
+    if (authLoading) return;
     if (user && user.is_admin) {
       loadDashboardStats();
       loadReports(reportDays);
     } else {
       navigate('/');
     }
-  }, [user, navigate, reportDays]);
+  }, [user, navigate, reportDays, authLoading]);
 
   useEffect(() => {
+    if (authLoading) return;
     if (user && user.is_admin) {
       loadReports(reportDays);
     }
-  }, [reportDays, user]);
+  }, [reportDays, user, authLoading]);
 
   const loadDashboardStats = async () => {
     try {

@@ -20,6 +20,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PermitVerificationDashboard from './pages/PermitVerificationDashboard';
 import DTIPriceManagement from './pages/DTIPriceManagement';
 import AdminRiders from './pages/AdminRiders';
+import RiderOrders from './pages/RiderOrders';
 import './App.css';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
             <Route path="/farmer-verify" element={<FarmerVerify />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/admin-riders" element={<AdminRiders />} />
+            <Route path="/rider-orders" element={<RiderOrders />} />
             <Route path="/permit-verification-dashboard" element={<PermitVerificationDashboard />} />
             <Route path="/dti-prices" element={<DTIPriceManagement />} />
           </Routes>

@@ -93,6 +93,9 @@ export const ordersAPI = {
   updateSellerOrderStatus: (id, payload) => api.post(`/api/order/${id}/status`, payload),
   getOrderTracking: (id) => api.get(`/api/orders/${id}/tracking`),
   assignRider: (id, payload) => api.post(`/api/orders/${id}/assign-rider`, payload),
+  getRiderOrders: () => api.get('/api/rider/orders'),
+  updateRiderOrderStatus: (id, payload) => api.post(`/api/rider/orders/${id}/status`, payload),
+  confirmPaymongo: (orderId) => api.post('/api/paymongo/confirm', { order_id: orderId }),
 };
 
 export const ridersAPI = {

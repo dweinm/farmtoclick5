@@ -13,7 +13,7 @@ from db import get_mongodb_db
 from middleware import token_required
 from helpers import allowed_file, MAX_FILE_SIZE, send_system_email, build_email_html, generate_receipt_pdf
 from lalamove import create_delivery_order, get_delivery_status
-from paymongo import create_checkout_session, PayMongoError, verify_webhook_signature
+from paymongo import create_checkout_session, PayMongoError, verify_webhook_signature, get_checkout_session
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -103,6 +103,28 @@ def _finalize_paid_order(db, order_doc):
         print(f"Payment confirmation email error: {e}")
 
 
+def _paymongo_session_paid(session):
+    if not isinstance(session, dict):
+        return False, None
+    attrs = session.get('attributes', {})
+    status = (attrs.get('payment_status') or attrs.get('status') or '').lower()
+    if status in ('paid', 'succeeded', 'complete', 'completed'):
+        payment_id = attrs.get('payment_intent_id') or attrs.get('payment_id')
+        return True, payment_id
+
+    payments = attrs.get('payments') or []
+    for payment in payments:
+        if not isinstance(payment, dict):
+            continue
+        p_attrs = payment.get('attributes', {})
+        p_status = (p_attrs.get('status') or p_attrs.get('payment_status') or '').lower()
+        if p_status in ('paid', 'succeeded', 'complete', 'completed'):
+            payment_id = p_attrs.get('id') or payment.get('id')
+            return True, payment_id
+
+    return False, None
+
+
 # ------------------------------------------------------------------
 # Auth
 # ------------------------------------------------------------------
@@ -140,6 +162,7 @@ def api_login():
                     'role': user.role,
                     'is_admin': user.role == 'admin',
                     'is_farmer': user.role == 'farmer',
+                    'is_rider': user.role == 'rider',
                     'profile_picture': user.profile_picture,
                     'overall_location': getattr(user, 'overall_location', ''),
                     'shipping_address': getattr(user, 'shipping_address', ''),
@@ -197,6 +220,7 @@ def api_register():
                 'role': user.role,
                 'is_admin': user.role == 'admin',
                 'is_farmer': user.role == 'farmer',
+                'is_rider': user.role == 'rider',
                 'profile_picture': user.profile_picture,
                 'overall_location': getattr(user, 'overall_location', ''),
                 'shipping_address': getattr(user, 'shipping_address', ''),
@@ -689,6 +713,7 @@ def api_clear_cart():
 @token_required
 def api_get_orders():
     try:
+        from bson import ObjectId
         db, _ = get_mongodb_db(api_bp)
         if db is None:
             return jsonify({'error': 'Database connection failed'}), 500
@@ -706,9 +731,223 @@ def api_get_orders():
             order.setdefault('assigned_rider_barangay', None)
             order.setdefault('assigned_rider_city', None)
             order.setdefault('assigned_rider_province', None)
+
+            if order.get('payment_provider') == 'paymongo' and order.get('payment_status') != 'paid':
+                checkout_id = order.get('paymongo_checkout_id')
+                if checkout_id:
+                    try:
+                        session = get_checkout_session(checkout_id)
+                        is_paid, payment_id = _paymongo_session_paid(session)
+                        if is_paid:
+                            update_fields = {
+                                'payment_status': 'paid',
+                                'paid_at': datetime.utcnow(),
+                                'updated_at': datetime.utcnow(),
+                            }
+                            if payment_id:
+                                update_fields['paymongo_payment_id'] = payment_id
+                            db.orders.update_one({'_id': ObjectId(order['_id'])}, {'$set': update_fields})
+                            order['payment_status'] = 'paid'
+                            _finalize_paid_order(db, order)
+                    except Exception:
+                        pass
         return jsonify(orders)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/paymongo/confirm', methods=['POST'])
+@token_required
+def api_paymongo_confirm():
+    try:
+        from bson import ObjectId
+
+        data = request.get_json() or {}
+        order_id = (data.get('order_id') or '').strip()
+        if not order_id:
+            return jsonify({'error': 'Order id is required'}), 400
+
+        db, _ = get_mongodb_db(api_bp)
+        if db is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        order_filter = {'_id': ObjectId(order_id)} if ObjectId.is_valid(order_id) else {'_id': order_id}
+        order_doc = db.orders.find_one(order_filter)
+        if not order_doc:
+            return jsonify({'error': 'Order not found'}), 404
+
+        if order_doc.get('user_id') != request.user_id:
+            return jsonify({'error': 'Not authorized'}), 403
+
+        if order_doc.get('payment_provider') != 'paymongo':
+            return jsonify({'error': 'Order is not PayMongo'}), 400
+
+        if order_doc.get('payment_status') == 'paid':
+            return jsonify({'status': 'paid'}), 200
+
+        checkout_id = order_doc.get('paymongo_checkout_id')
+        if not checkout_id:
+            return jsonify({'error': 'Checkout session not found'}), 400
+
+        session = get_checkout_session(checkout_id)
+        is_paid, payment_id = _paymongo_session_paid(session)
+        if is_paid:
+            update_fields = {
+                'payment_status': 'paid',
+                'paid_at': datetime.utcnow(),
+                'updated_at': datetime.utcnow(),
+            }
+            if payment_id:
+                update_fields['paymongo_payment_id'] = payment_id
+            db.orders.update_one(order_filter, {'$set': update_fields})
+            _finalize_paid_order(db, order_doc)
+            return jsonify({'status': 'paid'}), 200
+
+        return jsonify({'status': 'pending'}), 200
+    except PayMongoError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/rider/orders', methods=['GET'])
+@token_required
+def api_get_rider_orders():
+    try:
+        from user_model import User
+
+        db, _ = get_mongodb_db(api_bp)
+        if db is None:
+            return jsonify({'error': 'Database connection failed'}), 500
+
+        user = User.get_by_email(db, request.user_email)
+        if not user or getattr(user, 'role', 'user') != 'rider':
+            return jsonify({'error': 'Not authorized'}), 403
+
+        rider_doc = db.riders.find_one({'user_id': str(user.id)})
+        if not rider_doc:
+            rider_doc = db.riders.find_one({'email': user.email})
+        if not rider_doc:
+            return jsonify({'error': 'Rider profile not found'}), 404
+
+        assigned_id = str(rider_doc.get('_id'))
+        orders = list(db.orders.find({'assigned_rider_id': assigned_id}).sort('created_at', -1))
+
+        results = []
+        for order in orders:
+            buyer = db.users.find_one({'id': order.get('user_id')})
+            results.append({
+                'id': str(order.get('_id')),
+                'status': order.get('status', 'pending'),
+                'delivery_status': order.get('delivery_status', order.get('status', 'pending')),
+                'delivery_tracking_id': order.get('delivery_tracking_id'),
+                'created_at': order.get('created_at'),
+                'buyer_name': buyer.get('first_name') if buyer else 'Customer',
+                'buyer_phone': buyer.get('phone') if buyer else '',
+                'shipping_name': order.get('shipping_name'),
+                'shipping_phone': order.get('shipping_phone'),
+                'shipping_address': order.get('shipping_address'),
+                'delivery_address': order.get('delivery_address'),
+                'delivery_notes': order.get('delivery_notes'),
+                'items': order.get('items', []),
+                'total_amount': order.get('total_amount', 0),
+            })
+
+        return jsonify({'orders': results})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/rider/orders/<order_id>/status', methods=['POST'])
+@token_required
+def api_update_rider_order_status(order_id):
+    try:
+        from bson import ObjectId
+        from user_model import User
+
+        db, _ = get_mongodb_db(api_bp)
+        if db is None:
+            return jsonify({'success': False, 'message': 'Database connection failed'}), 500
+
+        user = User.get_by_email(db, request.user_email)
+        if not user or getattr(user, 'role', 'user') != 'rider':
+            return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+        data = request.get_json() or {}
+        new_status = (data.get('status') or '').strip().lower()
+        if new_status not in ('picked_up', 'on_the_way', 'delivered'):
+            return jsonify({'success': False, 'message': 'Invalid status'}), 400
+
+        order_doc = None
+        if ObjectId.is_valid(order_id):
+            order_doc = db.orders.find_one({'_id': ObjectId(order_id)})
+        if not order_doc:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+        rider_doc = db.riders.find_one({'user_id': str(user.id)})
+        if not rider_doc:
+            rider_doc = db.riders.find_one({'email': user.email})
+        if not rider_doc:
+            return jsonify({'success': False, 'message': 'Rider profile not found'}), 404
+
+        assigned_id = str(rider_doc.get('_id'))
+        if order_doc.get('assigned_rider_id') != assigned_id:
+            return jsonify({'success': False, 'message': 'Not authorized'}), 403
+
+        current_status = (order_doc.get('delivery_status') or order_doc.get('status') or 'pending').lower()
+        if new_status == 'picked_up' and current_status not in ('ready_for_ship', 'picked_up'):
+            return jsonify({'success': False, 'message': 'Order must be ready for ship'}), 400
+        if new_status == 'on_the_way' and current_status not in ('picked_up', 'on_the_way'):
+            return jsonify({'success': False, 'message': 'Order must be picked up'}), 400
+        if new_status == 'delivered' and current_status not in ('on_the_way', 'delivered'):
+            return jsonify({'success': False, 'message': 'Order must be on the way'}), 400
+
+        update_fields = {
+            'status': new_status,
+            'delivery_status': new_status,
+            'updated_at': datetime.utcnow(),
+        }
+
+        delivery_updates = list(order_doc.get('delivery_updates', []))
+        delivery_updates.append({
+            'status': new_status,
+            'updated_at': datetime.utcnow(),
+        })
+        update_fields['delivery_updates'] = delivery_updates
+
+        db.orders.update_one({'_id': order_doc['_id']}, {'$set': update_fields})
+
+        try:
+            buyer = db.users.find_one({'id': order_doc.get('user_id')})
+            buyer_email = buyer.get('email') if buyer else None
+            buyer_name = buyer.get('first_name') if buyer else 'Customer'
+            if buyer_email:
+                status_label = new_status.replace('_', ' ').upper()
+                email_html = build_email_html(
+                    title="Delivery Update",
+                    subtitle="Your order delivery status changed",
+                    badge_text=status_label,
+                    content_html=(
+                        f"<p>Hi {buyer_name},</p>"
+                        f"<p>Your order status is now <strong>{status_label}</strong>.</p>"
+                        f'<div style="background:#f3f4f6;padding:12px 14px;border-radius:10px;">'
+                        f"<strong>Order ID:</strong> {order_id}</div>"
+                        "<p style='margin-top:12px;'>Thank you for shopping with FarmtoClick.</p>"
+                    ),
+                )
+                send_system_email(
+                    current_app,
+                    buyer_email,
+                    "FarmtoClick Delivery Update",
+                    f"Order {order_id} status updated to {status_label}.",
+                    html_body=email_html,
+                )
+        except Exception as e:
+            print(f"Rider status email error: {e}")
+
+        return jsonify({'success': True, 'status': new_status})
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Failed to update order'}), 500
 
 
 @api_bp.route('/orders/<order_id>/tracking', methods=['GET'])
@@ -986,7 +1225,7 @@ def api_paymongo_webhook():
             return jsonify({'received': True}), 200
 
         update_fields = {'updated_at': datetime.utcnow()}
-        if event_type == 'payment.paid':
+        if event_type in ('payment.paid', 'checkout_session.payment.paid'):
             if order_doc.get('payment_status') == 'paid':
                 return jsonify({'received': True}), 200
             update_fields['payment_status'] = 'paid'
@@ -1038,8 +1277,6 @@ def api_farmer_orders():
             return doc
 
         for order_doc in db.orders.find().sort('created_at', -1):
-            if order_doc.get('payment_provider') == 'paymongo' and order_doc.get('payment_status') != 'paid':
-                continue
             order_items = []
             for item in order_doc.get('items', []):
                 pdoc = _get_product(item.get('product_id'))
@@ -1061,6 +1298,8 @@ def api_farmer_orders():
                     'delivery_status': order_doc.get('delivery_status', ''),
                     'delivery_tracking_id': order_doc.get('delivery_tracking_id'),
                     'created_at': order_doc.get('created_at'),
+                    'payment_provider': order_doc.get('payment_provider'),
+                    'payment_status': order_doc.get('payment_status'),
                     'buyer_name': (buyer.get('first_name') if buyer else 'Customer'),
                     'buyer_email': (buyer.get('email') if buyer else ''),
                     'shipping_name': order_doc.get('shipping_name'),

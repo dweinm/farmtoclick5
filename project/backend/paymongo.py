@@ -92,3 +92,18 @@ def verify_webhook_signature(payload: bytes, signature_header: str) -> bool:
 
     digest = hmac.new(secret.encode('utf-8'), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(provided, digest)
+
+
+def get_checkout_session(checkout_id: str) -> Dict[str, object]:
+    if not checkout_id:
+        raise PayMongoError('Checkout session id is required')
+
+    response = requests.get(
+        f'{PAYMONGO_API_BASE}/checkout_sessions/{checkout_id}',
+        headers=_build_headers(),
+        timeout=20,
+    )
+    if response.status_code != 200:
+        raise PayMongoError(f"PayMongo error: {response.text}")
+
+    return response.json().get('data', {})

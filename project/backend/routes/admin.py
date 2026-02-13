@@ -158,6 +158,7 @@ def get_all_orders():
 def admin_riders():
     try:
         from bson import ObjectId
+        from user_model import User
 
         db, _ = get_mongodb_db(admin_bp)
         if db is None:
@@ -176,7 +177,9 @@ def admin_riders():
             updated_at = doc.get('updated_at')
             return {
                 'id': str(doc.get('_id')),
+                'user_id': doc.get('user_id'),
                 'name': doc.get('name', ''),
+                'email': doc.get('email', ''),
                 'phone': doc.get('phone', ''),
                 'barangay': doc.get('barangay', ''),
                 'city': doc.get('city', ''),
@@ -199,17 +202,38 @@ def admin_riders():
 
         data = request.get_json() or {}
         name = (data.get('name') or '').strip()
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
         phone = (data.get('phone') or '').strip()
         barangay = (data.get('barangay') or '').strip()
         city = (data.get('city') or '').strip()
         province = (data.get('province') or '').strip()
         active = bool(data.get('active', True))
 
-        if not all([name, phone, barangay, city, province]):
-            return jsonify({'error': 'Name, phone, barangay, city, and province are required'}), 400
+        if not all([name, email, password, phone, barangay, city, province]):
+            return jsonify({'error': 'Name, email, password, phone, barangay, city, and province are required'}), 400
+
+        if db.users.find_one({'email': email}):
+            return jsonify({'error': 'Email already registered'}), 400
+
+        name_parts = name.split()
+        first_name = name_parts[0] if name_parts else name
+        last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+
+        rider_user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            role='rider',
+        )
+        rider_user.set_password(password)
+        rider_user.save(db)
 
         rider_doc = {
+            'user_id': rider_user.id,
             'name': name,
+            'email': email,
             'phone': phone,
             'barangay': barangay,
             'city': city,
@@ -232,6 +256,7 @@ def admin_riders():
 def admin_rider_detail(rider_id):
     try:
         from bson import ObjectId
+        from user_model import User
 
         db, _ = get_mongodb_db(admin_bp)
         if db is None:
@@ -264,6 +289,30 @@ def admin_rider_detail(rider_id):
                 update_doc[field] = (data.get(field) or '').strip()
         if 'active' in data:
             update_doc['active'] = bool(data.get('active'))
+
+        password = (data.get('password') or '').strip()
+        if password:
+            user_doc = None
+            if rider_doc.get('user_id'):
+                user_doc = db.users.find_one({'id': rider_doc.get('user_id')})
+            if not user_doc and rider_doc.get('email'):
+                user_doc = db.users.find_one({'email': rider_doc.get('email')})
+            if user_doc:
+                rider_user = User.from_dict(user_doc)
+                rider_user.set_password(password)
+                rider_user.save(db)
+
+        password = (data.get('password') or '').strip()
+        if password:
+            user_doc = None
+            if rider_doc.get('user_id'):
+                user_doc = db.users.find_one({'id': rider_doc.get('user_id')})
+            if not user_doc and rider_doc.get('email'):
+                user_doc = db.users.find_one({'email': rider_doc.get('email')})
+            if user_doc:
+                rider_user = User.from_dict(user_doc)
+                rider_user.set_password(password)
+                rider_user.save(db)
 
         if not update_doc:
             return jsonify({'error': 'No updates provided'}), 400

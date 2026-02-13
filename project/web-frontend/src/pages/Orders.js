@@ -10,6 +10,7 @@ const Orders = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState({});
   const [trackingLoading, setTrackingLoading] = useState({});
+  const [confirmLoading, setConfirmLoading] = useState({});
 
   useEffect(() => {
     if (user) {
@@ -17,6 +18,19 @@ const Orders = () => {
     } else {
       setIsLoading(false);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const pendingOrderId = localStorage.getItem('paymongoPendingOrder');
+    if (!pendingOrderId) return;
+    ordersAPI.confirmPaymongo(pendingOrderId).then((res) => {
+      if (res.data?.status === 'paid') {
+        localStorage.removeItem('paymongoPendingOrder');
+        loadOrders();
+      }
+    }).catch(() => {
+    });
   }, [user]);
 
   const loadOrders = async () => {
@@ -68,6 +82,20 @@ const Orders = () => {
       console.error('Error refreshing tracking:', error);
     } finally {
       setTrackingLoading(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const confirmPaymongoPayment = async (orderId) => {
+    try {
+      setConfirmLoading(prev => ({ ...prev, [orderId]: true }));
+      const res = await ordersAPI.confirmPaymongo(orderId);
+      if (res.data?.status === 'paid') {
+        await loadOrders();
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+    } finally {
+      setConfirmLoading(prev => ({ ...prev, [orderId]: false }));
     }
   };
 
@@ -226,6 +254,17 @@ const Orders = () => {
                           >
                             {trackingLoading[orderId] ? 'Refreshing...' : 'Refresh Delivery Status'}
                           </button>
+                          {order.payment_provider === 'paymongo' && order.payment_status !== 'paid' && (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={() => confirmPaymongoPayment(orderId)}
+                              disabled={confirmLoading[orderId]}
+                              style={{ marginLeft: '10px' }}
+                            >
+                              {confirmLoading[orderId] ? 'Verifying...' : 'Verify Payment'}
+                            </button>
+                          )}
                         </div>
                       </div>
 
