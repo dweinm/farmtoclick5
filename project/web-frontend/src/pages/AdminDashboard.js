@@ -37,6 +37,7 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [reportDays, setReportDays] = useState(30);
   const [activeTab, setActiveTab] = useState('overview');
+  const [recentOrders, setRecentOrders] = useState([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -84,6 +85,7 @@ const AdminDashboard = () => {
         const orders = data.orders || [];
         totalOrders = orders.length;
         totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total) || parseFloat(o.total_amount) || 0), 0);
+        setRecentOrders(orders.slice(0, 6));
       }
       if (verificationsRes.ok) {
         const data = await verificationsRes.json();
@@ -256,6 +258,30 @@ const AdminDashboard = () => {
                       </button>
                     ))}
                   </div>
+
+                  {recentOrders.length > 0 && (
+                    <div className="chart-card recent-orders">
+                      <h3><i className="fas fa-receipt"></i> Recent Orders</h3>
+                      <div className="recent-orders-list">
+                        {recentOrders.map((order) => (
+                          <div key={order._id || order.id} className="recent-order-row">
+                            <div>
+                              <div className="recent-order-id">#{(order._id || order.id || '').toString().slice(-6)}</div>
+                              <div className="recent-order-date">{order.created_at ? new Date(order.created_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</div>
+                            </div>
+                            <div className="recent-order-meta">
+                              <span className={`recent-order-status status-${(order.status || 'pending').toLowerCase()}`}>{order.status || 'pending'}</span>
+                              {order.delivery_proof_url ? (
+                                <a href={order.delivery_proof_url} target="_blank" rel="noreferrer">Delivery proof</a>
+                              ) : (
+                                <span className="recent-order-no-proof">No proof</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Revenue Timeline */}
                   <div className="chart-card">
@@ -742,6 +768,60 @@ const AdminDashboard = () => {
         }
 
         .report-table tbody tr:hover { background: #f9fef9; }
+
+        /* ── Recent Orders ── */
+        .recent-orders-list {
+          display: grid;
+          gap: 10px;
+        }
+
+        .recent-order-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          background: #fff;
+        }
+
+        .recent-order-id {
+          font-weight: 700;
+          color: #14532d;
+        }
+
+        .recent-order-date {
+          font-size: 0.8rem;
+          color: #6b7280;
+          margin-top: 2px;
+        }
+
+        .recent-order-meta {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 0.85rem;
+        }
+
+        .recent-order-meta a {
+          color: #1b5e20;
+          text-decoration: underline;
+        }
+
+        .recent-order-no-proof {
+          color: #9ca3af;
+          font-size: 0.8rem;
+        }
+
+        .recent-order-status {
+          padding: 4px 10px;
+          border-radius: 12px;
+          background: #e8f5e9;
+          color: #1b5e20;
+          text-transform: capitalize;
+          font-weight: 600;
+          font-size: 0.75rem;
+        }
 
         /* ── Actions ── */
         .admin-actions-section {

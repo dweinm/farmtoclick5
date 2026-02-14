@@ -428,6 +428,7 @@ def farmer_dashboard():
                             'buyer_name': (buyer.get('first_name') if buyer else 'Customer'),
                             'buyer_email': (buyer.get('email') if buyer else ''),
                             'payment_method': order_doc.get('payment_method'),
+                            'delivery_proof_url': order_doc.get('delivery_proof_url'),
                             'shipping_name': order_doc.get('shipping_name'),
                             'shipping_phone': order_doc.get('shipping_phone'),
                             'shipping_address': order_doc.get('shipping_address'),

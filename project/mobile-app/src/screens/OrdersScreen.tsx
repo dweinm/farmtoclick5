@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -214,6 +215,17 @@ const OrdersScreen: React.FC = () => {
                   <Text style={[styles.infoValue, { flex: 1 }]}>
                     {item.delivery_notes}
                   </Text>
+                </View>
+              )}
+
+              {item.delivery_proof_url && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Delivery Proof</Text>
+                  <Image
+                    source={{ uri: item.delivery_proof_url }}
+                    style={styles.proofImage}
+                    resizeMode="cover"
+                  />
                 </View>
               )}
             </View>
@@ -459,6 +471,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     fontWeight: '500',
+  },
+  proofImage: {
+    width: 140,
+    height: 100,
+    borderRadius: 8,
+    marginLeft: 8,
   },
   updateItem: {
     flexDirection: 'row',

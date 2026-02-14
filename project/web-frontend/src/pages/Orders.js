@@ -194,6 +194,14 @@ const Orders = () => {
                               <span className="meta-value">{order.logistics_provider}</span>
                             </div>
                           )}
+                          {order.delivery_proof_url && (
+                            <div className="order-meta-item">
+                              <span className="meta-label">Delivery Proof</span>
+                              <span className="meta-value">
+                                <a href={order.delivery_proof_url} target="_blank" rel="noreferrer">View photo</a>
+                              </span>
+                            </div>
+                          )}
                           {order.assigned_rider_name && (
                             <div className="order-meta-item">
                               <span className="meta-label">Rider</span>

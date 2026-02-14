@@ -146,6 +146,21 @@ const ProfileScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
+        {user.role === 'rider' && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('RiderOrders')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: '#E0F2F1' }] }>
+                <Ionicons name="bicycle" size={20} color="#00796B" />
+              </View>
+              <Text style={styles.menuText}>Rider Orders</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+        )}
+
         {user.is_farmer ? (
           <TouchableOpacity
             style={styles.menuItem}

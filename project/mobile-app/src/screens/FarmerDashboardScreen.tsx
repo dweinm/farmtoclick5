@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -335,6 +336,17 @@ const FarmerDashboardScreen: React.FC = () => {
                   </View>
                 )}
 
+                {order.delivery_proof_url && (
+                  <View style={styles.orderItems}>
+                    <Text style={styles.orderItemLabel}>Delivery Proof</Text>
+                    <Image
+                      source={{ uri: order.delivery_proof_url }}
+                      style={styles.proofImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+
                 {/* Order Actions */}
                 {(order.status === 'pending' || order.status === 'confirmed') && (
                   <View style={styles.orderActions}>
@@ -613,6 +625,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#555',
     marginBottom: 3,
+  },
+  orderItemLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 6,
+  },
+  proofImage: {
+    width: 160,
+    height: 120,
+    borderRadius: 8,
   },
   orderActions: {
     flexDirection: 'row',

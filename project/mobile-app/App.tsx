@@ -23,6 +23,7 @@ import FarmerProfileScreen from './src/screens/FarmerProfileScreen';
 import FarmerVerifyScreen from './src/screens/FarmerVerifyScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 import VerificationDashboardScreen from './src/screens/VerificationDashboardScreen';
+import RiderOrdersScreen from './src/screens/RiderOrdersScreen';
 
 // Context
 import { AuthProvider } from './src/context/AuthContext';
@@ -155,6 +156,11 @@ export default function App() {
             name="VerificationDashboard"
             component={VerificationDashboardScreen}
             options={{ title: 'Farmer Verifications' }}
+          />
+          <Stack.Screen
+            name="RiderOrders"
+            component={RiderOrdersScreen}
+            options={{ title: 'Assigned Orders' }}
           />
         </Stack.Navigator>
         <StatusBar style="auto" />

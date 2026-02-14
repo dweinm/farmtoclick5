@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -34,6 +35,7 @@ interface Order {
   total: number;
   status: string;
   created_at: string;
+  delivery_proof_url?: string;
 }
 
 const AdminDashboardScreen: React.FC = () => {
@@ -313,6 +315,13 @@ const AdminDashboardScreen: React.FC = () => {
                       })
                     : 'N/A'}
                 </Text>
+                {order.delivery_proof_url && (
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(order.delivery_proof_url || '')}
+                  >
+                    <Text style={styles.proofLink}>View Delivery Proof</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <View style={styles.orderRight}>
                 <Text style={styles.orderAmount}>
@@ -543,6 +552,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888',
     marginTop: 3,
+  },
+  proofLink: {
+    fontSize: 12,
+    color: '#2E7D32',
+    marginTop: 4,
+    textDecorationLine: 'underline',
   },
   orderRight: {
     alignItems: 'flex-end',

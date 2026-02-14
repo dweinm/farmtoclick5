@@ -139,6 +139,7 @@ def get_all_orders():
                 'total_amount': order.get('total_amount', 0),
                 'status': order.get('status', 'pending'),
                 'created_at': str(order.get('created_at', '')),
+                'delivery_proof_url': order.get('delivery_proof_url'),
             })
         
         return jsonify({

@@ -10,6 +10,7 @@ const RiderOrders = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [flashMessages, setFlashMessages] = useState([]);
+  const [deliveryProofs, setDeliveryProofs] = useState({});
 
   const loadOrders = async () => {
     try {
@@ -32,12 +33,28 @@ const RiderOrders = () => {
     }
   }, [user, navigate, authLoading]);
 
-  const updateOrderStatus = async (orderId, status) => {
+  const updateOrderStatus = async (orderId, status, proofFile = null) => {
+    if (status === 'delivered' && !proofFile) {
+      setFlashMessages([{ category: 'error', text: 'Please upload a delivery proof photo.' }]);
+      return;
+    }
     try {
-      const res = await ordersAPI.updateRiderOrderStatus(orderId, { status });
+      let payload = { status };
+      if (proofFile) {
+        const formData = new FormData();
+        formData.append('status', status);
+        formData.append('delivery_proof', proofFile);
+        payload = formData;
+      }
+      const res = await ordersAPI.updateRiderOrderStatus(orderId, payload);
       const data = res.data || {};
       if (data.success) {
         setFlashMessages([{ category: 'success', text: `Order ${status} successfully!` }]);
+        setDeliveryProofs(prev => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
         loadOrders();
       } else {
         setFlashMessages([{ category: 'error', text: data.message || 'Failed to update order status' }]);
@@ -50,6 +67,12 @@ const RiderOrders = () => {
   const formatStatus = (status) => {
     const value = (status || 'pending').toString().replace(/_/g, ' ').toLowerCase();
     return value.replace(/\b\w/g, (m) => m.toUpperCase());
+  };
+
+  const handleProofChange = (orderId, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setDeliveryProofs(prev => ({ ...prev, [orderId]: file }));
   };
 
   return (
@@ -130,6 +153,14 @@ const RiderOrders = () => {
                                 <span className="meta-value">{order.delivery_notes}</span>
                               </div>
                             )}
+                            {order.delivery_proof_url && (
+                              <div className="order-meta-item">
+                                <span className="meta-label">Delivery Proof</span>
+                                <span className="meta-value">
+                                  <a href={order.delivery_proof_url} target="_blank" rel="noreferrer">View photo</a>
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <div className="order-items">
                             <h4>Items</h4>
@@ -151,9 +182,28 @@ const RiderOrders = () => {
                               </button>
                             )}
                             {statusValue === 'on_the_way' && (
-                              <button className="btn btn-primary" onClick={() => updateOrderStatus(order.id, 'delivered')}>
-                                Mark Delivered
-                              </button>
+                              <div className="order-proof" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                                <div>
+                                  <label className="meta-label" style={{ display: 'block', marginBottom: '6px' }}>Delivery Proof Photo</label>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(event) => handleProofChange(order.id, event)}
+                                  />
+                                  {deliveryProofs[order.id] && (
+                                    <div className="meta-value" style={{ marginTop: '6px' }}>
+                                      Selected: {deliveryProofs[order.id].name}
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => updateOrderStatus(order.id, 'delivered', deliveryProofs[order.id])}
+                                  disabled={!deliveryProofs[order.id]}
+                                >
+                                  Mark Delivered
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>

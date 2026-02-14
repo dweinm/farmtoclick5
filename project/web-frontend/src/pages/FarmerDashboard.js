@@ -502,6 +502,13 @@ const FarmerDashboard = () => {
                           </ul>
                         </div>
 
+                        {order.delivery_proof_url && (
+                          <div className="farmer-order-items">
+                            <p className="farmer-order-items-title">Delivery Proof</p>
+                            <a href={order.delivery_proof_url} target="_blank" rel="noreferrer">View photo</a>
+                          </div>
+                        )}
+
                         {statusValue === 'pending' && (
                           <div className="farmer-order-actions">
                             <button className="btn btn-primary" onClick={() => updateOrderStatus(order.id, 'approved')}>

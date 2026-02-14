@@ -4,6 +4,7 @@ export interface User {
   first_name: string;
   last_name: string;
   phone?: string;
+  role?: string;
   is_farmer: boolean;
   is_admin?: boolean;
   is_verified?: boolean;
@@ -73,6 +74,7 @@ export interface Order {
   payment_method?: string;
   delivery_status?: string;
   delivery_tracking_id?: string;
+  delivery_proof_url?: string;
   delivery_notes?: string;
   logistics_provider?: string;
   tracking_number?: string;
@@ -140,6 +142,7 @@ export type RootStackParamList = {
   FarmerProfile: { farmerId: string };
   EditProfile: undefined;
   Orders: undefined;
+  RiderOrders: undefined;
   FarmerDashboard: undefined;
   ManageProducts: undefined;
   StartSelling: undefined;

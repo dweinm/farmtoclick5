@@ -104,6 +104,9 @@ export const ordersAPI = {
   updateSellerOrderStatus: (id: string, payload: any) => 
     api.post(`/api/order/${id}/status`, payload),
   getOrderTracking: (id: string) => api.get(`/api/orders/${id}/tracking`),
+  getRiderOrders: () => api.get('/api/rider/orders'),
+  updateRiderOrderStatus: (id: string, payload: any) => 
+    api.post(`/api/rider/orders/${id}/status`, payload),
 };
 
 // DTI Price API

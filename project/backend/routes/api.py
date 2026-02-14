@@ -19,7 +19,9 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # routes/ -> backend/
 UPLOAD_FOLDER = os.path.join(_BACKEND_DIR, 'static', 'uploads', 'profiles')
+DELIVERY_PROOF_UPLOAD_FOLDER = os.path.join(_BACKEND_DIR, 'static', 'uploads', 'delivery_proofs')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(DELIVERY_PROOF_UPLOAD_FOLDER, exist_ok=True)
 
 
 def _get_paymongo_redirect_urls():
@@ -841,6 +843,7 @@ def api_get_rider_orders():
                 'status': order.get('status', 'pending'),
                 'delivery_status': order.get('delivery_status', order.get('status', 'pending')),
                 'delivery_tracking_id': order.get('delivery_tracking_id'),
+                'delivery_proof_url': order.get('delivery_proof_url'),
                 'created_at': order.get('created_at'),
                 'buyer_name': buyer.get('first_name') if buyer else 'Customer',
                 'buyer_phone': buyer.get('phone') if buyer else '',
@@ -873,7 +876,9 @@ def api_update_rider_order_status(order_id):
         if not user or getattr(user, 'role', 'user') != 'rider':
             return jsonify({'success': False, 'message': 'Not authorized'}), 403
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
+        if not data and request.form:
+            data = request.form.to_dict()
         new_status = (data.get('status') or '').strip().lower()
         if new_status not in ('picked_up', 'on_the_way', 'delivered'):
             return jsonify({'success': False, 'message': 'Invalid status'}), 400
@@ -907,6 +912,29 @@ def api_update_rider_order_status(order_id):
             'delivery_status': new_status,
             'updated_at': datetime.utcnow(),
         }
+
+        if new_status == 'delivered':
+            proof_file = request.files.get('delivery_proof')
+            if not proof_file or not proof_file.filename:
+                return jsonify({'success': False, 'message': 'Delivery proof photo is required'}), 400
+            if not allowed_file(proof_file.filename):
+                return jsonify({'success': False, 'message': 'Invalid file type. Please upload a JPG or PNG image.'}), 400
+
+            proof_file.seek(0, os.SEEK_END)
+            file_size = proof_file.tell()
+            proof_file.seek(0)
+            if file_size > MAX_FILE_SIZE:
+                return jsonify({'success': False, 'message': 'Image must be less than 5MB'}), 400
+
+            original = secure_filename(proof_file.filename)
+            unique_name = f"delivery_{uuid.uuid4().hex}_{original}"
+            proof_path = os.path.join(DELIVERY_PROOF_UPLOAD_FOLDER, unique_name)
+            proof_file.save(proof_path)
+
+            proof_url = url_for('static', filename=f'uploads/delivery_proofs/{unique_name}', _external=True)
+            update_fields['delivery_proof_filename'] = unique_name
+            update_fields['delivery_proof_url'] = proof_url
+            update_fields['delivery_proof_uploaded_at'] = datetime.utcnow()
 
         delivery_updates = list(order_doc.get('delivery_updates', []))
         delivery_updates.append({
@@ -992,6 +1020,7 @@ def api_order_tracking(order_id):
             'order_id': str(order_doc.get('_id')),
             'delivery_status': delivery_status,
             'delivery_tracking_id': tracking_id,
+            'delivery_proof_url': order_doc.get('delivery_proof_url'),
             'delivery_updates': order_doc.get('delivery_updates', []),
             'logistics_provider': order_doc.get('logistics_provider', 'lalamove'),
         })
@@ -1297,6 +1326,7 @@ def api_farmer_orders():
                     'status': order_doc.get('status', 'pending'),
                     'delivery_status': order_doc.get('delivery_status', ''),
                     'delivery_tracking_id': order_doc.get('delivery_tracking_id'),
+                    'delivery_proof_url': order_doc.get('delivery_proof_url'),
                     'created_at': order_doc.get('created_at'),
                     'payment_method': order_doc.get('payment_method'),
                     'payment_provider': order_doc.get('payment_provider'),
