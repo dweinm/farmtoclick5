@@ -280,6 +280,25 @@ const FarmerDashboard = () => {
     return value.replace(/\b\w/g, (m) => m.toUpperCase());
   };
 
+  const getPaymentMethodLabel = (method) => {
+    if (!method) {
+      return 'Not specified';
+    }
+
+    const normalized = method.toString().trim().toLowerCase();
+    const knownMethods = {
+      gcash: 'GCash',
+      qrph: 'QRPh',
+      mobile: 'Mobile Money',
+      card: 'Card',
+      cash: 'Cash',
+      cod: 'Cash on Delivery',
+      bank: 'Bank Transfer',
+    };
+
+    return knownMethods[normalized] || getStatusLabel(method);
+  };
+
   if (!user || !user.is_farmer) {
     return (
       <div className="farmer-dashboard-page">
@@ -400,6 +419,7 @@ const FarmerDashboard = () => {
                       const shippingPhone = order.shipping_phone || order.buyer_phone;
                       const isDraggable = statusValue === 'ready_for_ship' && !order.assigned_rider_id;
                       const paymentPending = order.payment_provider === 'paymongo' && order.payment_status !== 'paid';
+                      const paymentMethodLabel = getPaymentMethodLabel(order.payment_method);
 
                       return (
                       <article
@@ -452,6 +472,11 @@ const FarmerDashboard = () => {
                             {order.delivery_notes && <p style={{ margin: '6px 0 0' }}><strong>Notes:</strong> {order.delivery_notes}</p>}
                           </div>
                         )}
+
+                        <div className="farmer-order-items">
+                          <p className="farmer-order-items-title">Payment Method</p>
+                          <p style={{ margin: 0 }}>{paymentMethodLabel}</p>
+                        </div>
 
                         {order.assigned_rider_name && (
                           <div className="farmer-order-items">

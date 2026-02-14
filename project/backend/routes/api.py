@@ -1298,6 +1298,7 @@ def api_farmer_orders():
                     'delivery_status': order_doc.get('delivery_status', ''),
                     'delivery_tracking_id': order_doc.get('delivery_tracking_id'),
                     'created_at': order_doc.get('created_at'),
+                    'payment_method': order_doc.get('payment_method'),
                     'payment_provider': order_doc.get('payment_provider'),
                     'payment_status': order_doc.get('payment_status'),
                     'buyer_name': (buyer.get('first_name') if buyer else 'Customer'),

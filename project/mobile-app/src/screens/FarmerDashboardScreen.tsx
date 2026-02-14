@@ -134,6 +134,25 @@ const FarmerDashboardScreen: React.FC = () => {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  const formatPaymentMethod = (method?: string) => {
+    if (!method) {
+      return 'Not specified';
+    }
+
+    const normalized = method.toString().trim().toLowerCase();
+    const knownMethods: Record<string, string> = {
+      gcash: 'GCash',
+      qrph: 'QRPh',
+      mobile: 'Mobile Money',
+      card: 'Card',
+      cash: 'Cash',
+      cod: 'Cash on Delivery',
+      bank: 'Bank Transfer',
+    };
+
+    return knownMethods[normalized] || formatStatus(method);
+  };
+
   const getStatusStyle = (status: string) => {
     const normalized = (status || 'pending').toLowerCase().replace(/[_\s]+/g, '');
     return STATUS_COLORS[normalized] || STATUS_COLORS.pending;
@@ -280,6 +299,7 @@ const FarmerDashboardScreen: React.FC = () => {
             const orderId = order._id || order.id;
             const statusStyle = getStatusStyle(order.status);
             const total = order.total_amount || order.total || 0;
+            const paymentMethodLabel = formatPaymentMethod(order.payment_method);
 
             return (
               <View key={orderId} style={styles.orderCard}>
@@ -292,6 +312,7 @@ const FarmerDashboardScreen: React.FC = () => {
                     {order.buyer_name && (
                       <Text style={styles.buyerName}>by {order.buyer_name}</Text>
                     )}
+                    <Text style={styles.paymentMethod}>Payment: {paymentMethodLabel}</Text>
                   </View>
                   <View style={styles.orderRight}>
                     <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
@@ -557,6 +578,11 @@ const styles = StyleSheet.create({
   buyerName: {
     fontSize: 12,
     color: '#4CAF50',
+    marginTop: 2,
+  },
+  paymentMethod: {
+    fontSize: 12,
+    color: '#555',
     marginTop: 2,
   },
   orderRight: {
